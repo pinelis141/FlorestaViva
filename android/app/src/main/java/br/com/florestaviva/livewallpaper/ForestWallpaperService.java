@@ -84,11 +84,15 @@ public class ForestWallpaperService extends WallpaperService {
         private final Runnable drawRunnable = new Runnable() {
             @Override public void run() {
                 if (!visible || dead) return;
-                long now=SystemClock.uptimeMillis();
-                float dt=lastFrame==0 ? .04f : Math.min(.08f,(now-lastFrame)/1000f);
-                lastFrame=now;
+                long frameStart=SystemClock.uptimeMillis();
+                float dt=lastFrame==0 ? .0167f : Math.min(.08f,(frameStart-lastFrame)/1000f);
+                lastFrame=frameStart;
                 drawFrame(dt);
-                if(visible && !dead)handler.postDelayed(this,battery?66:40);
+                // Frame-start paced: unlike postDelayed-after-render, render time
+                // is included in the frame budget, avoiding uneven slow motion.
+                int period=battery?42:(knightSelected && prefs.getBoolean("knight_60fps",true)?17:33);
+                long next=Math.max(frameStart+period,SystemClock.uptimeMillis()+1L);
+                if(visible && !dead)handler.postAtTime(this,next);
             }
         };
 

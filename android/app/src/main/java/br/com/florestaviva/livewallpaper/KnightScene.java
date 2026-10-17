@@ -6,6 +6,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.RadialGradient;
+import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Shader;
 import android.os.SystemClock;
@@ -27,9 +28,13 @@ final class KnightScene {
     private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint light=new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint haze=new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Rect capeSource=new Rect();
+    private final RectF capeDestination=new RectF();
     private final float[] candleX={45,207,251,302,356,603,628,694,753,812,870};
     private final float[] candleY={579,710,1459,565,536,534,555,720,1310,963,1154};
     private boolean sword=true,eyes=true,movingCape=true,candles=true,fog=true,tilt=true,awakening=true,battery=false;
+    private float intensity=1.3f;
+    private int screenW=1, screenH=1;
     private float elapsed=0,eyeFlash=0,awake=0,wind=0,tiltX=0,tiltY=0;
     private float offsetX,offsetY,scale;
     private long lastAwaken=0;
@@ -58,9 +63,10 @@ final class KnightScene {
         tilt=p.getBoolean("knight_tilt",true);
         awakening=p.getBoolean("knight_awakening",true);
         battery=p.getBoolean("battery",false);
+        intensity=.75f+Math.min(100,Math.max(0,p.getInt("knight_intensity",65)))/100f*1.65f;
     }
     void onTouch(float nx,float ny,boolean doubleTap){
-        float x=nx*W,y=ny*H;
+        float x=(nx*screenW-offsetX)/scale,y=(ny*screenH-offsetY)/scale;
         if(x>325&&x<602&&y>545&&y<1045){
             eyeFlash=1f;
             wind=(x<W*.5f?-1f:1f);
@@ -69,20 +75,21 @@ final class KnightScene {
     }
     void tryAwaken(){
         long now=SystemClock.uptimeMillis();
-        if(awakening && now-lastAwaken>5000){awake=4.2f;lastAwaken=now;eyeFlash=1.5f;}
+        if(awakening && now-lastAwaken>5500){awake=4.2f;lastAwaken=now;eyeFlash=1.5f;}
     }
     void draw(Canvas c,int width,int height,float dt,float xTilt,float yTilt){
         if(background==null)return;
+        screenW=width;screenH=height;
         elapsed+=dt;
-        eyeFlash=Math.max(0,eyeFlash-dt*.65f);
+        eyeFlash=Math.max(0,eyeFlash-dt*.85f);
         awake=Math.max(0,awake-dt);
-        wind*=Math.max(0,1-dt*.4f);
-        tiltX+=(xTilt-tiltX)*.075f;
-        tiltY+=(yTilt-tiltY)*.075f;
+        wind*=Math.max(0,1-dt*1.0f);
+        tiltX+=(xTilt-tiltX)*Math.min(1f,dt*8f);
+        tiltY+=(yTilt-tiltY)*Math.min(1f,dt*8f);
         // Crop-fill artwork and leave 5% bleed for sensor-driven movement.
         scale=Math.max(width/(float)W,height/(float)H)*1.06f;
-        offsetX=(width-W*scale)*.5f+(tilt?tiltX*width*.010f:0);
-        offsetY=(height-H*scale)*.5f+(tilt?tiltY*height*.006f:0);
+        offsetX=(width-W*scale)*.5f+(tilt?tiltX*width*.023f:0);
+        offsetY=(height-H*scale)*.5f+(tilt?tiltY*height*.013f:0);
         c.save(); c.translate(offsetX,offsetY);c.scale(scale,scale);
         art.setAlpha(255);
         c.drawBitmap(background,0,0,art);
@@ -97,63 +104,104 @@ final class KnightScene {
     }
     private void drawBreathing(Canvas c){
         if(chest==null)return;
-        float breathe=(float)Math.sin(elapsed*1.4f)*.0040f;
+        // Subtle, but measurable: 4-6 original artwork pixels of vertical breathing.
+        float breathe=(float)Math.sin(elapsed*2.1f);
+        float uplift=(2.5f+3.5f*breathe)*intensity;
         c.save();
-        c.translate(468,838);c.scale(1+breathe,1+breathe*1.4f);
-        art.setAlpha(190);
-        c.drawBitmap(chest,-138,-178,art); // crop: 330,660 - 620,1040
-        art.setAlpha(255);c.restore();
+        c.translate(468,838-uplift);
+        c.scale(1f+breathe*.008f*intensity,1f+breathe*.014f*intensity);
+        art.setAlpha(235);
+        c.drawBitmap(chest,-138,-178,art);
+        art.setAlpha(255);
+        c.restore();
     }
     private void drawCape(Canvas c){
         if(cape==null)return;
-        float flutter=(float)Math.sin(elapsed*1.05f)*1.3f+(float)Math.sin(elapsed*.53f)*.9f+wind;
-        if(awake>0)flutter*=1.7f;
-        c.save();
-        c.translate(555,789);
-        c.rotate(flutter*.9f);
-        art.setAlpha(232);
-        c.drawBitmap(cape, -355, -64, art); // crop: 200,725 - 915,1265
-        c.restore();art.setAlpha(255);
+        // Strip-deformed 2D cloth. Rows are animated continuously rather than jumping
+        // between still sprites; the shoulder is anchored while the torn ends swing.
+        final int cw=cape.getWidth(),ch=cape.getHeight(), seam=327;
+        final int strip=9;
+        float gust=wind*7f;
+        float speed=elapsed*3.25f;
+        art.setAlpha(245);
+        for(int top=0;top<ch;top+=strip){
+            int bottom=Math.min(ch,top+strip);
+            float depth=top/(float)ch;
+            float anchor=depth*depth;
+            float wave=(float)Math.sin(speed-depth*5.7f);
+            float wave2=(float)Math.sin(speed*.71f+depth*8.3f);
+            float flutter=(wave*16f+wave2*7f+gust)*anchor*intensity;
+            if(awake>0f) flutter*=1.65f;
+            float dy=(float)Math.sin(speed*.82f+depth*4.3f)*3.0f*anchor*intensity;
+            // The hanging cloth on either side is drawn separately to avoid
+            // dragging the knight torso with the cape.
+            capeSource.set(0,top,seam,bottom);
+            capeDestination.set(200-flutter*.74f,725+top+dy,
+                    200+seam-flutter*.74f,725+bottom+dy+.3f);
+            c.drawBitmap(cape,capeSource,capeDestination,art);
+            capeSource.set(seam,top,cw,bottom);
+            capeDestination.set(200+seam+flutter,725+top+dy,
+                    200+cw+flutter,725+bottom+dy+.3f);
+            c.drawBitmap(cape,capeSource,capeDestination,art);
+        }
+        art.setAlpha(255);
     }
     private void drawSword(Canvas c){
-        float awaken=awake>0?1.7f:0f;
-        float pulse=.68f+.25f*(float)Math.sin(elapsed*2.6f)+awaken;
-        // Sword extends from the glowing jewel (430,944) to the stone (433,1382).
+        float power=(awake>0f?1.7f:1f)*intensity;
+        float pulse=.78f+.22f*(float)Math.sin(elapsed*5.0f);
         c.save();
-        light.setAlpha(Math.min(255,(int)(142*pulse)));
-        c.translate(434,1141);c.scale(.82f,6.9f);
-        c.drawCircle(0,0,40,light);
-        c.restore();
-        paint.setStrokeWidth(2.9f);paint.setColor(Color.argb(190,255,70,50));
-        c.drawLine(433,957,434,1358,paint);
-        paint.setStrokeWidth(1.5f);
-        paint.setColor(Color.argb(170,255,214,163));
-        float lineY=950+(elapsed*125)%420;
-        for(int i=0;i<5;i++){
-            float y=950+((lineY-950+i*67)%420);
-            c.drawLine(431+(float)Math.sin(y)*2,y,434,y+14,paint);
+        // Stationary ambient aura keeps the blade embedded in the artwork.
+        c.translate(434,1141);c.scale(.85f,7.3f);
+        light.setAlpha(Math.min(255,(int)(145*pulse*power)));
+        c.drawCircle(0,0,40,light);c.restore();
+
+        // Distinct bright energy travelling visibly from hilt to sword tip.
+        float length=409f, displacement=(elapsed*285f)%length;
+        paint.setStyle(Paint.Style.STROKE);
+        paint.setStrokeCap(Paint.Cap.ROUND);
+        for(int line=0;line<7;line++){
+            float y=957+(displacement+line*length/7f)%length;
+            float xx=433f+(float)Math.sin(elapsed*6.0f+line*.9f)*4.5f*intensity;
+            paint.setStrokeWidth(line%3==0?4.5f:2.25f);
+            paint.setColor(Color.argb(Math.min(250,(int)(225*pulse*power)),255,
+                    line%3==0?218:73,line%3==0?146:59));
+            c.drawLine(xx,y,xx+(float)Math.sin(elapsed*6f+line)*2f,Math.min(1365,y+30f),paint);
         }
-        // Persistent glow in the stone and puddles below the sword tip.
-        c.save();c.translate(434,1385);c.scale(2.6f,.6f);
-        light.setAlpha(Math.min(255,(int)(105*pulse)));
+        paint.setStyle(Paint.Style.FILL);
+        // Animated magical sparks orbit the blade instead of staying fixed.
+        for(int i=0;i<12;i++){
+            float y=955+(i*47f+elapsed*(i%2==0?160f:230f))%415f;
+            float x=434+(float)Math.sin(elapsed*(2.3f+i*.15f)+i)*((i%2==0?16f:27f)*intensity);
+            int alpha=(int)(135+70*(.5f+.5f*(float)Math.sin(elapsed*5.2f+i)));
+            paint.setColor(Color.argb(alpha,255,i%3==0?214:54,45));
+            float side=i%4==0?3.3f:2f;
+            c.drawRect(x,y,x+side,y+side,paint);
+        }
+        c.save();c.translate(434,1385);c.scale(3.0f,.60f);
+        light.setAlpha(Math.min(255,(int)(125*pulse*power)));
         c.drawCircle(0,0,40,light);c.restore();
     }
     private void drawEyes(Canvas c){
-        float intensity=.36f+.19f*(float)Math.sin(elapsed*2.25f)+eyeFlash*.9f+(awake>0?1.1f:0);
-        for(float x:new float[]{458,485}){
+        float glow=.65f+.30f*(float)Math.sin(elapsed*3.8f)+eyeFlash*1.3f+(awake>0?1.5f:0);
+        glow*=intensity;
+        for(int i=0;i<2;i++){
+            float x=i==0?458f:485f;
             c.save();c.translate(x,640);c.scale(.23f,.13f);
-            light.setAlpha(Math.min(255,(int)(155*intensity)));
+            light.setAlpha(Math.min(255,(int)(155*glow)));
             c.drawCircle(0,0,40,light);c.restore();
-            paint.setColor(Color.argb(Math.min(255,(int)(110*intensity)),255,60,42));
+            paint.setColor(Color.argb(Math.min(255,(int)(160*glow)),255,60,42));
             c.drawRect(x-3,639,x+3,641,paint);
         }
     }
     private void drawCandles(Canvas c){
         for(int i=0;i<candleX.length;i++){
-            float flicker=(float)Math.sin(elapsed*(4.0f+(i%4)*.7f)+i*1.19f);
-            float x=candleX[i]+flicker*1.0f;
-            float y=candleY[i]+(float)Math.cos(elapsed*3.1f+i)*2.2f;
-            float factor=.48f+.22f*flicker+(awake>0?.16f:0);
+            float flicker=(float)Math.sin(elapsed*(6.4f+(i%4)*1.2f)+i*1.19f);
+            float x=candleX[i]+flicker*3.0f*intensity;
+            float y=candleY[i]+(float)Math.cos(elapsed*5.1f+i)*3.0f;
+            float factor=.64f+.29f*flicker+(awake>0?.30f:0);
+            // Shifting pool of illumination below each moving flame.
+            c.save();c.translate(x,y+24f);c.scale(1.4f,.42f);
+            light.setAlpha((int)(72*factor*intensity));c.drawCircle(0,0,40,light);c.restore();
             c.save();c.translate(x,y);c.scale(.37f,.47f);
             light.setAlpha(Math.min(195,Math.max(15,(int)(130*factor))));
             c.drawCircle(0,0,40,light);c.restore();
@@ -162,20 +210,20 @@ final class KnightScene {
         }
     }
     private void drawFog(Canvas c){
-        for(int i=0;i<5;i++){
-            float phase=elapsed*.15f+i*1.6f;
-            float x=112+i*192+(float)Math.sin(phase)*70+tiltX*i*2;
-            float y=1410+i*17+(float)Math.cos(phase*.4f)*10;
-            c.save();c.translate(x,y);c.scale(2.2f,.55f);
-            haze.setAlpha((int)(140+(awake>0?50:0)));
+        for(int i=0;i<6;i++){
+            float drift=(elapsed*(17f+i*3f)+i*157f)%(W+330f);
+            float x=-140f+drift;
+            float y=1380+i*36+(float)Math.sin(elapsed*.95f+i)*13f*intensity;
+            c.save();c.translate(x,y);c.scale(2.8f,.76f);
+            haze.setAlpha((int)(190+(awake>0?50:0)));
             c.drawCircle(0,0,120,haze);c.restore();
         }
     }
     private void drawParticles(Canvas c,float dt){
-        int maximum=battery?12:38;
+        int maximum=battery?18:48;
         for(int i=0;i<maximum;i++){
             Particle p=particles[i];
-            p.x+=p.dx*dt; p.y+=p.dy*dt;
+            p.x+=p.dx*dt*intensity; p.y+=p.dy*dt*intensity;
             if(p.y<40||p.y>1680||p.x<0||p.x>941) resetParticle(p,false);
             float shimmer=.5f+.5f*(float)Math.sin(elapsed*2+p.phase);
             int alpha=Math.min(215,(int)((75+100*shimmer)*(awake>0?1.25f:1f)));
@@ -197,8 +245,8 @@ final class KnightScene {
     private void resetParticle(Particle p,boolean initial){
         p.x=random.nextInt(W);
         p.y=initial?random.nextInt(H):H-120+random.nextInt(150);
-        p.dx=-14+random.nextFloat()*28;
-        p.dy=-9-random.nextFloat()*24;
+        p.dx=-34+random.nextFloat()*68;
+        p.dy=-33-random.nextFloat()*53;
         p.phase=random.nextFloat()*6.28f;
     }
     private static final class Particle{float x,y,dx,dy,phase;}

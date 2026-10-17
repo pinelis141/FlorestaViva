@@ -30,6 +30,22 @@ public class SettingsActivity extends Activity {
             option(column,p,"knight_fog","Névoa rasteira",true);
             option(column,p,"knight_tilt","Profundidade ao inclinar",true);
             option(column,p,"knight_awakening","Despertar (toque duplo ou longo)",true);
+            option(column,p,"knight_60fps","Alta fluidez (até 60 FPS)",true);
+            TextView movement=new TextView(this);
+            movement.setTextColor(0xFFDCEDD6);movement.setTextSize(17);
+            movement.setPadding(0,dp(18),0,dp(6));column.addView(movement);
+            SeekBar intensityBar=new SeekBar(this);intensityBar.setMax(100);
+            intensityBar.setProgress(Math.max(0,Math.min(100,p.getInt("knight_intensity",65))));
+            column.addView(intensityBar);
+            movement.setText("Intensidade do movimento: "+intensityBar.getProgress()+"%");
+            intensityBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){
+                public void onProgressChanged(SeekBar b,int value,boolean fromUser){
+                    movement.setText("Intensidade do movimento: "+value+"%");
+                    if(fromUser)p.edit().putInt("knight_intensity",value).apply();
+                }
+                public void onStartTrackingTouch(SeekBar b){}
+                public void onStopTrackingTouch(SeekBar b){}
+            });
         }else{
             option(column,p,"fire","Vaga-lumes interativos",true);
             option(column,p,"fog","Névoa em movimento",true);
@@ -46,7 +62,7 @@ public class SettingsActivity extends Activity {
                 public void onStartTrackingTouch(SeekBar b){}public void onStopTrackingTouch(SeekBar b){}
             });
         }
-        option(column,p,"battery","Economia de bateria (15 FPS)",false);
+        option(column,p,"battery","Economia de bateria (até 24 FPS)",false);
         TextView note=new TextView(this);note.setText("Alterações são aplicadas automaticamente, inclusive quando o wallpaper já está instalado. O Android pode reservar alguns gestos para ícones ou widgets.");
         note.setTextColor(0xFFADBFBE);note.setTextSize(13);note.setGravity(Gravity.START);
         note.setPadding(0,dp(24),0,0);column.addView(note);
