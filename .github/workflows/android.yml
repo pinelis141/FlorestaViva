@@ -32,7 +32,7 @@ jobs:
             fi
           fi
           test -f android/app/src/main/java/br/com/florestaviva/livewallpaper/ForestWallpaperService.java
-          test -f android/app/src/main/res/drawable-nodpi/floresta.png
+          test -f android/app/src/main/res/drawable-nodpi/floresta.jpg || test -f android/app/src/main/res/drawable-nodpi/floresta.png
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
