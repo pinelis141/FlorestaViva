@@ -19,7 +19,7 @@ for name,w,h,frames,cols,x,y in [
         np.abs(a[:,:3].astype("int16")-original[:3]).reshape(-1),
         np.abs(a[:,-3:].astype("int16")-original[-3:]).reshape(-1),
         np.abs(a[:,:,:3].astype("int16")-original[:,:3]).reshape(-1),
-        np.abs(a[:,:,:,-3:].astype("int16")-original[:,-3:]).reshape(-1)])
+        np.abs(a[:,:,-3:,:].astype("int16")-original[:,-3:]).reshape(-1)])
     err=border.mean()
     movement=np.abs(a[frames//4].astype("float32")-a[3*frames//4].astype("float32")).mean()
     assert err<3.9,(name,"seam",err)
