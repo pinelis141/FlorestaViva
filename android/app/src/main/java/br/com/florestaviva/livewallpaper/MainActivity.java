@@ -37,7 +37,8 @@ public class MainActivity extends Activity {
         hint.setPadding(0,dp(6),0,dp(22));root.addView(hint);
 
         LinearLayout gallery=new LinearLayout(this);gallery.setOrientation(LinearLayout.HORIZONTAL);gallery.setGravity(Gravity.TOP);
-        // A weight-only zero height collapses inside ScrollView.\n        root.addView(gallery,new LinearLayout.LayoutParams(-1,dp(320)));
+        // Give the gallery an explicit height inside ScrollView; otherwise it can collapse.
+        root.addView(gallery,new LinearLayout.LayoutParams(-1,dp(320)));
         forestCard=addCard(gallery,"forest",R.drawable.floresta,"FLORESTA VIVA", "Água • névoa • vaga-lumes");
         knightCard=addCard(gallery,"knight",R.drawable.cavaleiro,"DARK FANTASY", "Espada • fogo • despertar");
         refresh();
