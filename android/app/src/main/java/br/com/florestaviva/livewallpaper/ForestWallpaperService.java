@@ -237,7 +237,14 @@ public class ForestWallpaperService extends WallpaperService {
             gust*=.96f;
             Canvas canvas=null;
             try {
-                canvas=getSurfaceHolder().lockCanvas();
+                // Prefer GPU canvas for the knight's 60 FPS cloth and glow layers.
+                // Fall back to software Canvas on devices that do not support it.
+                if(knightSelected && !battery){
+                    try { canvas=getSurfaceHolder().lockHardwareCanvas(); }
+                    catch(RuntimeException hardwareUnavailable){canvas=getSurfaceHolder().lockCanvas();}
+                }else{
+                    canvas=getSurfaceHolder().lockCanvas();
+                }
                 if(canvas==null)return;
                 final int w=canvas.getWidth(),h=canvas.getHeight();
                 if(w<=0||h<=0)return;
