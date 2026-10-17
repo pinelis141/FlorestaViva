@@ -16,11 +16,14 @@ public class SettingsActivity extends Activity {
     @Override public void onCreate(Bundle savedInstanceState){
         super.onCreate(savedInstanceState);
         SharedPreferences p=getSharedPreferences(PREFS,MODE_PRIVATE);
-        boolean knight="knight".equals(p.getString("scene","forest"));
+        String scene=p.getString("scene","forest");
+        boolean knight="knight".equals(scene);
+        boolean galaxy="galaxy".equals(scene);
         ScrollView scroll=new ScrollView(this);scroll.setBackgroundColor(Color.rgb(8,13,21));
         LinearLayout column=new LinearLayout(this);column.setOrientation(LinearLayout.VERTICAL);
         column.setPadding(dp(22),dp(32),dp(22),dp(30));scroll.addView(column);
-        TextView title=new TextView(this);title.setText(knight?"Cavaleiro Amaldiçoado":"Floresta Viva");
+        TextView title=new TextView(this);
+        title.setText(knight?"Cavaleiro Amaldiçoado":(galaxy?"Galáxia Viva":"Floresta Viva"));
         title.setTextSize(24);title.setTextColor(Color.WHITE);title.setPadding(0,0,0,dp(15));column.addView(title);
         if(knight){
             option(column,p,"knight_sword","Espada amaldiçoada",true);
@@ -31,21 +34,15 @@ public class SettingsActivity extends Activity {
             option(column,p,"knight_tilt","Profundidade ao inclinar",true);
             option(column,p,"knight_awakening","Despertar (toque duplo ou longo)",true);
             option(column,p,"knight_60fps","Alta fluidez (até 60 FPS)",true);
-            TextView movement=new TextView(this);
-            movement.setTextColor(0xFFDCEDD6);movement.setTextSize(17);
-            movement.setPadding(0,dp(18),0,dp(6));column.addView(movement);
-            SeekBar intensityBar=new SeekBar(this);intensityBar.setMax(100);
-            intensityBar.setProgress(Math.max(0,Math.min(100,p.getInt("knight_intensity",65))));
-            column.addView(intensityBar);
-            movement.setText("Intensidade do movimento: "+intensityBar.getProgress()+"%");
-            intensityBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){
-                public void onProgressChanged(SeekBar b,int value,boolean fromUser){
-                    movement.setText("Intensidade do movimento: "+value+"%");
-                    if(fromUser)p.edit().putInt("knight_intensity",value).apply();
-                }
-                public void onStartTrackingTouch(SeekBar b){}
-                public void onStopTrackingTouch(SeekBar b){}
-            });
+            intensitySlider(column,p,"knight_intensity",65,"Intensidade do movimento");
+        }else if(galaxy){
+            option(column,p,"galaxy_flow","Fluxo galáctico",true);
+            option(column,p,"galaxy_particles","Partículas cósmicas",true);
+            option(column,p,"galaxy_stars","Estrelas cintilantes",true);
+            option(column,p,"galaxy_loop","Loop luminoso do núcleo",true);
+            option(column,p,"galaxy_tilt","Profundidade ao inclinar",true);
+            option(column,p,"galaxy_60fps","Alta fluidez (até 60 FPS)",true);
+            intensitySlider(column,p,"galaxy_intensity",68,"Intensidade do fluxo");
         }else{
             option(column,p,"fire","Vaga-lumes interativos",true);
             option(column,p,"fog","Névoa em movimento",true);
@@ -67,6 +64,22 @@ public class SettingsActivity extends Activity {
         note.setTextColor(0xFFADBFBE);note.setTextSize(13);note.setGravity(Gravity.START);
         note.setPadding(0,dp(24),0,0);column.addView(note);
         setContentView(scroll);
+    }
+    private void intensitySlider(LinearLayout column,SharedPreferences p,String key,int def,String labelText){
+        TextView label=new TextView(this);
+        label.setTextColor(0xFFDCEDD6);label.setTextSize(17);label.setPadding(0,dp(18),0,dp(6));column.addView(label);
+        SeekBar bar=new SeekBar(this);bar.setMax(100);
+        bar.setProgress(Math.max(0,Math.min(100,p.getInt(key,def))));
+        column.addView(bar);
+        label.setText(labelText+": "+bar.getProgress()+"%");
+        bar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){
+            public void onProgressChanged(SeekBar b,int value,boolean fromUser){
+                label.setText(labelText+": "+value+"%");
+                if(fromUser)p.edit().putInt(key,value).apply();
+            }
+            public void onStartTrackingTouch(SeekBar b){}
+            public void onStopTrackingTouch(SeekBar b){}
+        });
     }
     private void option(LinearLayout c,SharedPreferences p,String key,String label,boolean defaultValue){
         CheckBox b=new CheckBox(this);b.setText(label);b.setTextColor(0xFFE6F0E7);b.setTextSize(16);

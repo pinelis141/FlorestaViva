@@ -58,9 +58,10 @@ public class ForestWallpaperService extends WallpaperService {
         private boolean hardwareCanvasFailed=false;
         private long lastErrorLog=0;
         private Bitmap bitmap;
-        private Bitmap knightBitmap, capeBitmap;
+        private Bitmap knightBitmap, capeBitmap, galaxyBitmap;
+        private GalaxyScene galaxyScene;
         private KnightScene knightScene;
-        private boolean knightSelected=false;
+        private boolean knightSelected=false, galaxySelected=false;
         private long touchDown=0, lastTouchUp=0;
         private float artLeft, artTop, artScale=1f;
         private final Rect waterSrc = new Rect();
@@ -96,7 +97,7 @@ public class ForestWallpaperService extends WallpaperService {
                 drawFrame(dt);
                 // Frame-start paced: unlike postDelayed-after-render, render time
                 // is included in the frame budget, avoiding uneven slow motion.
-                int period=battery?42:(knightSelected && prefs.getBoolean("knight_60fps",true)?17:33);
+                int period=battery?42:((knightSelected && prefs.getBoolean("knight_60fps",true)) || (galaxySelected && prefs.getBoolean("galaxy_60fps",true))?17:33);
                 long next=Math.max(frameStart+period,SystemClock.uptimeMillis()+1L);
                 if(visible && !dead)handler.postAtTime(this,next);
             }
@@ -143,8 +144,11 @@ public class ForestWallpaperService extends WallpaperService {
         private float between(float a,float b){return a+random.nextFloat()*(b-a);}
         private float clamp(float v,float a,float b){return Math.max(a,Math.min(b,v));}
         private void reloadPrefs(){
-            knightSelected="knight".equals(prefs.getString("scene","forest"));
+            String selectedScene=prefs.getString("scene","forest");
+            knightSelected="knight".equals(selectedScene);
+            galaxySelected="galaxy".equals(selectedScene);
             if(knightSelected){ensureKnightScene();knightScene.load(prefs);}
+            if(galaxySelected){ensureGalaxyScene();galaxyScene.load(prefs);}
             fire=prefs.getBoolean("fire",true);
             fog=prefs.getBoolean("fog",true);
             foliage=prefs.getBoolean("leaves",true);
@@ -156,7 +160,7 @@ public class ForestWallpaperService extends WallpaperService {
         @Override public void onSharedPreferenceChanged(SharedPreferences shared,String key){
             reloadPrefs();
             // Slider updates should not repeatedly unregister/register the sensor.
-            if(visible && ("scene".equals(key)||"knight_tilt".equals(key)||"tilt".equals(key))){
+            if(visible && ("scene".equals(key)||"knight_tilt".equals(key)||"galaxy_tilt".equals(key)||"tilt".equals(key))){
                 stopSensor(); startSensor();
             }
         }
@@ -190,6 +194,13 @@ public class ForestWallpaperService extends WallpaperService {
                 }
                 return;
             }
+            if(galaxySelected){
+                if(action==MotionEvent.ACTION_DOWN){
+                    ensureGalaxyScene();
+                    galaxyScene.onTouch(clamp(ev.getX()/width,0,1),clamp(ev.getY()/height,0,1));
+                }
+                return;
+            }
             if(action==MotionEvent.ACTION_DOWN || action==MotionEvent.ACTION_MOVE){
                 // Launchers may reserve some gestures for their own UI.
                 if(action==MotionEvent.ACTION_DOWN || random.nextFloat()<.18f){
@@ -217,7 +228,7 @@ public class ForestWallpaperService extends WallpaperService {
             }
         }
         private void startSensor(){
-            if((knightSelected?prefs.getBoolean("knight_tilt",true):tiltEnabled) && !sensorRegistered && sensorManager!=null) {
+            if((knightSelected?prefs.getBoolean("knight_tilt",true):(galaxySelected?prefs.getBoolean("galaxy_tilt",true):tiltEnabled)) && !sensorRegistered && sensorManager!=null) {
                 Sensor chosen=rotationSensor!=null?rotationSensor:sensor;
                 if(chosen!=null) sensorRegistered=sensorManager.registerListener(this,chosen,SensorManager.SENSOR_DELAY_GAME);
             }
@@ -247,6 +258,15 @@ public class ForestWallpaperService extends WallpaperService {
             knightScene=new KnightScene(knightBitmap,capeBitmap);
             knightScene.load(prefs);
         }
+        private void ensureGalaxyScene(){
+            if(galaxyScene!=null)return;
+            BitmapFactory.Options options=new BitmapFactory.Options();
+            options.inScaled=false;
+            galaxyBitmap=BitmapFactory.decodeResource(getResources(),R.drawable.galaxy_space,options);
+            Bitmap flowing=BitmapFactory.decodeResource(getResources(),R.drawable.galaxy_flow,options);
+            galaxyScene=new GalaxyScene(galaxyBitmap,flowing);
+            galaxyScene.load(prefs);
+        }
         private void drawFrame(float dt){
             time+=dt;
             tiltX+=(targetX-tiltX)*.06f;
@@ -256,7 +276,7 @@ public class ForestWallpaperService extends WallpaperService {
             try {
                 // Prefer GPU canvas for the knight's 60 FPS cloth and glow layers.
                 // Fall back to software Canvas on devices that do not support it.
-                if(knightSelected && !battery && !hardwareCanvasFailed){
+                if((knightSelected||galaxySelected) && !battery && !hardwareCanvasFailed){
                     try { canvas=getSurfaceHolder().lockHardwareCanvas(); }
                     catch(RuntimeException hardwareUnavailable){
                         hardwareCanvasFailed=true;
@@ -272,6 +292,11 @@ public class ForestWallpaperService extends WallpaperService {
                 if(knightSelected){
                     ensureKnightScene();
                     knightScene.draw(canvas,w,h,dt,tiltX,tiltY);
+                    return;
+                }
+                if(galaxySelected){
+                    ensureGalaxyScene();
+                    galaxyScene.draw(canvas,w,h,dt,tiltX,tiltY);
                     return;
                 }
                 drawArt(canvas,w,h);
@@ -499,6 +524,8 @@ public class ForestWallpaperService extends WallpaperService {
             stopSensor();prefs.unregisterOnSharedPreferenceChangeListener(this);
             if(bitmap!=null){bitmap.recycle();bitmap=null;}
             if(knightBitmap!=null){knightBitmap.recycle();knightBitmap=null;}
+            if(galaxyScene!=null){galaxyScene.release();galaxyScene=null;}
+            if(galaxyBitmap!=null){galaxyBitmap.recycle();galaxyBitmap=null;}
             if(capeBitmap!=null){capeBitmap.recycle();capeBitmap=null;}
             super.onDestroy();
         }

@@ -20,6 +20,10 @@ jobs:
         run: python3 -m pip install --quiet opencv-python-headless pillow numpy
       - name: Gerar atlas a partir da arte original
         run: python3 tools/generate_replacement_atlases.py
+      - name: Gerar quadros do fluxo galactico
+        run: python3 tools/generate_galaxy_atlas.py
+      - name: Validar Galaxia: fluxo, bordas e regressao
+        run: python3 qa/verify_galaxy.py
       - name: Validar arte, movimento, interface e recursos
         run: python3 qa/verify_build.py
       - uses: actions/setup-java@v4

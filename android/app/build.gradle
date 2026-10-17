@@ -7,8 +7,8 @@ android {
         applicationId 'br.com.florestaviva.livewallpaper'
         minSdk 26
         targetSdk 35
-        versionCode 9
-        versionName '0.7.1-sem-respiracao'
+        versionCode 10
+        versionName '0.8.0-galaxia'
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17

@@ -44,7 +44,7 @@ assert "boolean hitKnight=knightScene.onTouch" in service
 assert "hitKnight && now-touchDown>1250" in service
 assert "private final float[] rotationMatrix=new float[9]" in service
 assert "onVisibilityChanged(boolean v)" in service
-assert "versionCode 9" in (ROOT/"android/app/build.gradle").read_text()
+assert "versionCode 10" in (ROOT/"android/app/build.gradle").read_text()
 for p in ["AndroidManifest.xml","res/xml/wallpaper.xml","res/values/strings.xml"]:
     path=ROOT/"android/app/src/main"/p if p.startswith("res/") else ROOT/"android/app/src/main"/p
     ET.parse(path)
