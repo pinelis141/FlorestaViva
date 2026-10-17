@@ -1,26 +1,21 @@
-# Floresta Viva — galeria de Live Wallpapers (Android)
+# Floresta Viva + Dark Fantasy Remaster (Android)
 
-Versão 0.3.0: **um único aplicativo Android** com dois cenários selecionáveis: **Floresta Viva** e **Cavaleiro Amaldiçoado (Dark Fantasy)**.
+A mesma instalação inclui **Floresta Viva** e **Cavaleiro Amaldiçoado**. O identificador do app continua `br.com.florestaviva.livewallpaper`.
 
-- Mantém `applicationId` `br.com.florestaviva.livewallpaper`, `ForestWallpaperService` e preferências `forest_prefs` para preservar a instalação e o tema Floresta original.
-- A tela principal permite alternar de tema e aplicar o wallpaper. A mudança de preferência atualiza o serviço em execução.
-- O cenário Dark Fantasy utiliza a **arte original escolhida**, além de **imagens com transparência recortadas** para capa e peitoral.
-- Programação independente dos efeitos do cavaleiro: energia na espada, olhos responsivos, leve oscilação de capa e peitoral, chamas, neblina, cinzas, sensor de inclinação e Despertar por toque prolongado/duplo.
-- Ambos os cenários suspendem renderização e sensor quando invisíveis, e possuem modo 15 FPS. O cavaleiro limita partículas a 12 no modo econômico.
+## Remaster — mudanças técnicas
 
-## Limitação artística na versão 0.3
+- A pintura original foi mantida como base, sem substituir o cavaleiro ou a catedral.
+- A capa tem um atlas de **24 quadros** gerado por deformação óptica limitada da textura da própria pintura.
+- O peitoral tem **16 quadros** de respiração com máscaras suaves.
+- O Android **interpola pares de quadros** na taxa de renderização, evitando mudanças bruscas entre poses.
+- Espada com energia programática seguindo o eixo da lâmina; olhos, velas, cinzas, névoa, reflexos, interação e evento Despertar.
+- O serviço pausa sensores e renderização quando deixa de estar visível; controle de 60 FPS e modo econômico disponíveis.
+- Python (`tools/make_layers.py`) cria os recursos a partir da arte-base; `tools/render_preview.py` produz a prévia MP4.
 
-A imagem aprovada é originalmente plana. O sistema usa recortes transparentes e deslocamentos pequenos; **isso não equivale a um rig 2D completo, reconstruído atrás da capa**, e a respiração é sutil. Para animação mais convincente, os recortes devem ser refinados manualmente com reconstrução das áreas ocultas. Não há vídeo em loop.
+## Testes
 
-## Gerar APK
+Prévia visual em `preview/DarkFantasyRemaster-preview.mp4` — feita em Python, **não** é captura de tela do aplicativo.
 
-Com JDK 17 e Android SDK 35:
+Requisitos para compilar: Java 17, Android SDK 35, Gradle 8.10.2. Execute `cd android && gradle assembleDebug`.
 
-```sh
-cd android
-gradle --no-daemon assembleDebug
-```
-
-Ou faça push no GitHub e use a workflow em `.github/workflows/android.yml`. O artefato resultante é `app-debug.apk` dentro de `FlorestaViva-APK`.
-
-**Atenção ao atualizar uma instalação antiga:** uma compilação de teste (`debug`) do GitHub Actions pode usar uma chave diferente da versão instalada. Nesse caso o Android impedirá a atualização direta: será necessário **desinstalar a versão de teste anterior**, instalar o novo APK e reaplicar o wallpaper. Isso continua sendo **um único aplicativo**, e não dois aplicativos separados. Para permitir atualizações futuras sem reinstalar, configurar uma assinatura de lançamento persistente.
+A versão ainda requer avaliação de fluidez, possíveis artefatos em máscaras e autonomia de bateria no celular real. Os movimentos de capa não constituem uma simulação física de tecido: a textura é deformada em regiões selecionadas, preservando a silhueta pintada.
