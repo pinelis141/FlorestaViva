@@ -184,8 +184,8 @@ public class ForestWallpaperService extends WallpaperService {
                     long now=SystemClock.uptimeMillis();
                     float px=clamp(ev.getX()/width,0,1),py=clamp(ev.getY()/height,0,1);
                     boolean doubleTap=now-lastTouchUp<400;
-                    knightScene.onTouch(px,py,doubleTap);
-                    if(now-touchDown>1700)knightScene.tryAwaken();
+                    boolean hitKnight=knightScene.onTouch(px,py,doubleTap);
+                    if(hitKnight && now-touchDown>1250)knightScene.tryAwaken();
                     lastTouchUp=now;
                 }
                 return;

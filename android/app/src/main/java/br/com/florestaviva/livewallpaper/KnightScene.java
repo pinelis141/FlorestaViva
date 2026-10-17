@@ -65,14 +65,16 @@ final class KnightScene {
         // UI percentage now maps predictably to 0.8x through 1.6x.
         intensity=.8f+Math.max(0,Math.min(100,p.getInt("knight_intensity",65)))*.008f;
     }
-    void onTouch(float nx,float ny,boolean doubleTap){
+    boolean onTouch(float nx,float ny,boolean doubleTap){
         float x=(nx*screenW-offsetX)/Math.max(.1f,scale);
         float y=(ny*screenH-offsetY)/Math.max(.1f,scale);
         if(x>330&&x<590&&y>570&&y<1120){
             eyeFlash=1f;
             wind=(x<475?-1f:1f);
             if(doubleTap)tryAwaken();
+            return true;
         }
+        return false;
     }
     void tryAwaken(){
         long now=SystemClock.uptimeMillis();
@@ -91,9 +93,14 @@ final class KnightScene {
         float response=Math.min(1,dt*7f);
         tiltX+=(xTilt-tiltX)*response;
         tiltY+=(yTilt-tiltY)*response;
-        scale=Math.max(width/(float)W,height/(float)H)*1.02f;
-        offsetX=(width-W*scale)*.5f+(tilt?tiltX*width*.014f:0);
-        offsetY=(height-H*scale)*.5f+(tilt?tiltY*height*.009f:0);
+        scale=Math.max(width/(float)W,height/(float)H)*1.065f;
+        // Parallax may not exceed the available crop bleed.
+        float bx=Math.max(0f,(W*scale-width)*.5f);
+        float by=Math.max(0f,(H*scale-height)*.5f);
+        float dx=tilt?Math.max(-bx*.90f,Math.min(bx*.90f,tiltX*width*.018f)):0f;
+        float dy=tilt?Math.max(-by*.90f,Math.min(by*.90f,tiltY*height*.012f)):0f;
+        offsetX=(width-W*scale)*.5f+dx;
+        offsetY=(height-H*scale)*.5f+dy;
         c.save();c.translate(offsetX,offsetY);c.scale(scale,scale);
         art.setAlpha(255);
         c.drawBitmap(background,0,0,art);
@@ -101,7 +108,7 @@ final class KnightScene {
             // Independent region-replacement atlases: animated pixels displace original
             // paint exactly once. Both assets fade to the untouched base at their edge.
             drawAtlas(c,breathAtlas,351,612,255,369,4,16,2.85f,0f);
-            drawAtlas(c,capeAtlas,510,684,402,491,4,24,1.75f,wind);
+            drawAtlas(c,capeAtlas,510,684,402,491,4,24,3.15f,wind);
         }
         if(candles)drawCandles(c);
         if(sword)drawSword(c);
@@ -146,7 +153,7 @@ final class KnightScene {
         }
     }
     private void drawSword(Canvas c){
-        float pulse=.68f+.32f*(float)Math.sin(elapsed*4.9f);
+        float pulse=.70f+.30f*(float)Math.sin(elapsed*5.6f);
         float active=awake>0?1.5f:1f;
         float energy=pulse*intensity*active;
         // Base aura follows the long straight original blade; red and warm-white
@@ -167,15 +174,15 @@ final class KnightScene {
                 if(i==0)swordPath.moveTo(x,y);else swordPath.lineTo(x,y);
             }
             pen.setStrokeWidth(lane==1?2.7f:1.6f);
-            pen.setColor(Color.argb(Math.min(225,(int)(125*energy)),
+            pen.setColor(Color.argb(Math.min(225,(int)(160*energy)),
                     255,lane==1?166:46,lane==1?107:55));
             c.drawPath(swordPath,pen);
         }
-        for(int i=0;i<10;i++){
-            float y=bladeStart+((elapsed*230+i*63f)%(bladeEnd-bladeStart));
+        for(int i=0;i<14;i++){
+            float y=bladeStart+((elapsed*340+i*41f)%(bladeEnd-bladeStart));
             float dx=(float)Math.sin(elapsed*4.5f+i*2)*3f;
             pen.setStrokeWidth(i%3==0?3f:1.8f);
-            pen.setColor(Color.argb(Math.min(255,(int)(200*energy)),255,185,129));
+            pen.setColor(Color.argb(Math.min(255,(int)(235*energy)),255,185,129));
             c.drawLine(431+dx,y,438-dx,y+13,pen);
         }
         pen.setStyle(Paint.Style.FILL);
@@ -183,8 +190,8 @@ final class KnightScene {
         glow.setAlpha(Math.min(250,(int)(138*energy)));
         c.drawCircle(0,0,40,glow);c.restore();
         // Small coherent sparks originate at the blade, not arbitrary scene locations.
-        for(int i=0;i<22;i++){
-            float orbit=elapsed*(25f+(i%5)*9f)+i*48f;
+        for(int i=0;i<28;i++){
+            float orbit=elapsed*(44f+(i%5)*12f)+i*48f;
             float y=bladeEnd-(orbit%(bladeEnd-bladeStart));
             float x=435f+(float)Math.sin(elapsed*2.8+i*2f)*(8f+i%4*4f);
             pen.setColor(Color.argb(105+(i%4)*25,255,70+i%3*28,35));
@@ -210,7 +217,7 @@ final class KnightScene {
     }
     private void drawFog(Canvas c){
         for(int i=0;i<5;i++){
-            float drift=(elapsed*(12f+i*3.2f)+i*250f)%(W+330);
+            float drift=(elapsed*(21f+i*4.5f)+i*250f)%(W+330);
             float x=-170+drift;
             float y=1410+i*38+(float)Math.sin(elapsed*.77+i)*15f;
             c.save();c.translate(x,y);c.scale(2.2f,.59f);

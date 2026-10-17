@@ -1,58 +1,41 @@
-name: Compilar APK Floresta Viva
+name: Floresta Viva - Qualidade e compilacao
 on:
   workflow_dispatch:
   push:
     branches: [main]
     paths:
-      - '*.zip'
       - 'android/**'
+      - 'qa/**'
+      - 'tools/**'
       - '.github/workflows/android.yml'
 permissions:
   contents: read
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - name: Extrair projeto do ZIP quando necessario
-        run: |
-          if [ ! -f android/settings.gradle ]; then
-            ARCHIVE=$(find . -maxdepth 1 -type f -iname '*FlorestaViva*.zip' -print -quit)
-            if [ -z "$ARCHIVE" ]; then
-              echo "::error::Envie FlorestaViva-Projeto-Android.zip para a raiz do repositorio."
-              exit 1
-            fi
-            mkdir -p .floresta_unpack
-            unzip -q "$ARCHIVE" -d .floresta_unpack
-            if [ -d .floresta_unpack/FlorestaViva/android ]; then
-              mv .floresta_unpack/FlorestaViva/android ./android
-            else
-              echo "::error::ZIP sem FlorestaViva/android."
-              exit 1
-            fi
-          fi
-          test -f android/app/src/main/java/br/com/florestaviva/livewallpaper/ForestWallpaperService.java
-          test -f android/app/src/main/res/drawable-nodpi/floresta.jpg || test -f android/app/src/main/res/drawable-nodpi/floresta.png
+      - name: Instalar ferramentas de arte
+        run: python3 -m pip install --quiet opencv-python-headless pillow numpy
+      - name: Gerar atlas a partir da arte original
+        run: python3 tools/generate_replacement_atlases.py
+      - name: Validar arte, movimento, interface e recursos
+        run: python3 qa/verify_build.py
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v4
-        with:
-          packages: 'platform-tools'
+      - uses: android-actions/setup-android@v3
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.10.2'
-      - name: Instalar Android SDK 35
-        run: |
-          echo "y" | sdkmanager --licenses >/dev/null || true
-          sdkmanager --install 'platforms;android-35' 'build-tools;35.0.0'
-      - name: Compilar APK
-        run: cd android && gradle --no-daemon assembleDebug
-      - name: Publicar APK para download
-        uses: actions/upload-artifact@v4
+      - name: Instalar SDK Android 35
+        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - name: Auditar Android e compilar APK
+        run: cd android && gradle --no-daemon lintDebug assembleDebug
+      - uses: actions/upload-artifact@v4
         with:
-          name: FlorestaViva-APK
+          name: FlorestaViva-Qualidade-APK
           path: android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
