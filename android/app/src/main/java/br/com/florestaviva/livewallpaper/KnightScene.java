@@ -30,6 +30,8 @@ final class KnightScene {
     private final Rect source=new Rect();
     private final RectF dest=new RectF();
     private final Particle[] ashes=new Particle[PARTICLES];
+    // 0 allocations in the renderer's per-frame paths.
+    private final Path swordPath = new Path();
     private final float[] candleX={45,207,251,302,356,603,628,694,753,812,870};
     private final float[] candleY={579,710,1459,565,536,534,555,720,1310,963,1154};
     private boolean sword=true,eyes=true,movingCape=true,candles=true,fog=true,tilt=true,awakening=true,battery=false;
@@ -89,15 +91,17 @@ final class KnightScene {
         float response=Math.min(1,dt*7f);
         tiltX+=(xTilt-tiltX)*response;
         tiltY+=(yTilt-tiltY)*response;
-        scale=Math.max(width/(float)W,height/(float)H)*1.055f;
+        scale=Math.max(width/(float)W,height/(float)H)*1.02f;
         offsetX=(width-W*scale)*.5f+(tilt?tiltX*width*.014f:0);
         offsetY=(height-H*scale)*.5f+(tilt?tiltY*height*.009f:0);
         c.save();c.translate(offsetX,offsetY);c.scale(scale,scale);
         art.setAlpha(255);
         c.drawBitmap(background,0,0,art);
         if(movingCape){
-            drawAtlas(c,breathAtlas,377,687,198,251,4,16,2.85f,0f);
-            drawAtlas(c,capeAtlas,542,696,338,464,6,24,1.75f,wind);
+            // Independent region-replacement atlases: animated pixels displace original
+            // paint exactly once. Both assets fade to the untouched base at their edge.
+            drawAtlas(c,breathAtlas,351,612,255,369,4,16,2.85f,0f);
+            drawAtlas(c,capeAtlas,510,684,402,491,4,24,1.75f,wind);
         }
         if(candles)drawCandles(c);
         if(sword)drawSword(c);
@@ -115,8 +119,10 @@ final class KnightScene {
         int first=(int)f;
         int second=(first+1)%n;
         float weight=f-first;
-        drawPose(c,atlas,first,columns,fw,fh,x,y,1f-weight);
-        drawPose(c,atlas,second,columns,fw,fh,x,y,weight);
+        // The first full-opacity pose replaces the base scene. Alpha-blend only
+        // the next pose: drawing both at fractional opacity leaves a static ghost.
+        drawPose(c,atlas,first,columns,fw,fh,x,y,1f);
+        if(weight>.003f) drawPose(c,atlas,second,columns,fw,fh,x,y,weight);
     }
     private void drawPose(Canvas c,Bitmap atlas,int frame,int cols,int fw,int fh,int x,int y,float opacity){
         if(opacity<.003f)return;
@@ -130,7 +136,8 @@ final class KnightScene {
     private void drawEyes(Canvas c){
         float pulse=.73f+.27f*(float)Math.sin(elapsed*2.8f);
         float energy=(pulse+eyeFlash*1.5f+(awake>0?1.2f:0))*intensity;
-        for(float x:new float[]{457f,483f}){
+        for(int eye=0;eye<2;eye++){
+            float x=eye==0?457f:483f;
             c.save();c.translate(x,639);c.scale(.25f,.14f);
             glow.setAlpha(Math.min(255,(int)(168*energy)));
             c.drawCircle(0,0,40,glow);c.restore();
@@ -151,18 +158,18 @@ final class KnightScene {
         pen.setStrokeCap(Paint.Cap.ROUND);
         final float bladeStart=971,bladeEnd=1361;
         for(int lane=0;lane<3;lane++){
-            Path path=new Path();
+            swordPath.reset();
             float center=432+(lane-1)*4.2f;
             for(int i=0;i<=52;i++){
                 float y=bladeStart+(bladeEnd-bladeStart)*i/52f;
                 float wave=(float)Math.sin(y*.053f-elapsed*7.1f+lane*1.6f);
                 float x=center+wave*(lane==1?2.2f:3.8f);
-                if(i==0)path.moveTo(x,y);else path.lineTo(x,y);
+                if(i==0)swordPath.moveTo(x,y);else swordPath.lineTo(x,y);
             }
             pen.setStrokeWidth(lane==1?2.7f:1.6f);
             pen.setColor(Color.argb(Math.min(225,(int)(125*energy)),
                     255,lane==1?166:46,lane==1?107:55));
-            c.drawPath(path,pen);
+            c.drawPath(swordPath,pen);
         }
         for(int i=0;i<10;i++){
             float y=bladeStart+((elapsed*230+i*63f)%(bladeEnd-bladeStart));

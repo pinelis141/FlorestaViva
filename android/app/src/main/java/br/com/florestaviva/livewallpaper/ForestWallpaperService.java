@@ -22,6 +22,7 @@ import android.os.SystemClock;
 import android.service.wallpaper.WallpaperService;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
+import android.util.Log;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -51,6 +52,11 @@ public class ForestWallpaperService extends WallpaperService {
         private final SharedPreferences prefs;
         private final SensorManager sensorManager;
         private final Sensor sensor;
+        private final Sensor rotationSensor;
+        private final float[] rotationMatrix=new float[9];
+        private final float[] orientation=new float[3];
+        private boolean hardwareCanvasFailed=false;
+        private long lastErrorLog=0;
         private Bitmap bitmap;
         private Bitmap knightBitmap, capeBitmap, chestBitmap;
         private KnightScene knightScene;
@@ -115,6 +121,7 @@ public class ForestWallpaperService extends WallpaperService {
             reloadPrefs();
             sensorManager=(SensorManager)getSystemService(Context.SENSOR_SERVICE);
             sensor=sensorManager==null?null:sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+            rotationSensor=sensorManager==null?null:sensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
             for(int i=0;i<bugs.length;i++) {
                 Firefly b=new Firefly();
                 b.x=between(.03f,.97f);b.y=between(.08f,.97f);
@@ -148,7 +155,10 @@ public class ForestWallpaperService extends WallpaperService {
         }
         @Override public void onSharedPreferenceChanged(SharedPreferences shared,String key){
             reloadPrefs();
-            if(visible) { stopSensor(); startSensor(); }
+            // Slider updates should not repeatedly unregister/register the sensor.
+            if(visible && ("scene".equals(key)||"knight_tilt".equals(key)||"tilt".equals(key))){
+                stopSensor(); startSensor();
+            }
         }
         @Override public void onSurfaceChanged(SurfaceHolder holder,int format,int w,int h){
             super.onSurfaceChanged(holder,format,w,h);
@@ -207,14 +217,22 @@ public class ForestWallpaperService extends WallpaperService {
             }
         }
         private void startSensor(){
-            if((knightSelected?prefs.getBoolean("knight_tilt",true):tiltEnabled) && !sensorRegistered && sensorManager!=null && sensor!=null) {
-                sensorRegistered=sensorManager.registerListener(this,sensor,SensorManager.SENSOR_DELAY_UI);
+            if((knightSelected?prefs.getBoolean("knight_tilt",true):tiltEnabled) && !sensorRegistered && sensorManager!=null) {
+                Sensor chosen=rotationSensor!=null?rotationSensor:sensor;
+                if(chosen!=null) sensorRegistered=sensorManager.registerListener(this,chosen,SensorManager.SENSOR_DELAY_GAME);
             }
         }
         private void stopSensor(){
             if(sensorRegistered && sensorManager!=null){sensorManager.unregisterListener(this);sensorRegistered=false;}
         }
         @Override public void onSensorChanged(SensorEvent e){
+            if(e.sensor.getType()==Sensor.TYPE_ROTATION_VECTOR){
+                SensorManager.getRotationMatrixFromVector(rotationMatrix,e.values);
+                SensorManager.getOrientation(rotationMatrix,orientation);
+                targetX=clamp(orientation[2]/.55f,-1,1);
+                targetY=clamp(orientation[1]/.85f,-1,1);
+                return;
+            }
             if(e.sensor.getType()!=Sensor.TYPE_ACCELEROMETER)return;
             targetX=clamp(-e.values[0]/7f,-1,1);
             targetY=clamp(e.values[1]/8f,-1,1);
@@ -239,9 +257,12 @@ public class ForestWallpaperService extends WallpaperService {
             try {
                 // Prefer GPU canvas for the knight's 60 FPS cloth and glow layers.
                 // Fall back to software Canvas on devices that do not support it.
-                if(knightSelected && !battery){
+                if(knightSelected && !battery && !hardwareCanvasFailed){
                     try { canvas=getSurfaceHolder().lockHardwareCanvas(); }
-                    catch(RuntimeException hardwareUnavailable){canvas=getSurfaceHolder().lockCanvas();}
+                    catch(RuntimeException hardwareUnavailable){
+                        hardwareCanvasFailed=true;
+                        canvas=getSurfaceHolder().lockCanvas();
+                    }
                 }else{
                     canvas=getSurfaceHolder().lockCanvas();
                 }
@@ -261,8 +282,14 @@ public class ForestWallpaperService extends WallpaperService {
                 if(foliage)drawLeaves(canvas,w,h);
                 if(fire)drawFireflies(canvas,w,h,dt);
                 drawRipples(canvas,w,h,dt);
-            }catch(RuntimeException ignored){
-                // Surface might disappear while the home screen is being closed.
+            }catch(RuntimeException renderingError){
+                // Surface may disappear during launcher transitions. Log a sampled
+                // diagnostic rather than hiding recurring renderer defects entirely.
+                long now=SystemClock.uptimeMillis();
+                if(now-lastErrorLog>30000){
+                    Log.w("FlorestaViva", "Frame rendering failed", renderingError);
+                    lastErrorLog=now;
+                }
             }finally{
                 if(canvas!=null){try{getSurfaceHolder().unlockCanvasAndPost(canvas);}catch(RuntimeException ignored){}}
             }
