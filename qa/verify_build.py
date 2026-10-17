@@ -9,8 +9,7 @@ J=ROOT/"android/app/src/main/java/br/com/florestaviva/livewallpaper"
 source=np.asarray(Image.open(R/"cavaleiro.webp").convert("RGB"))
 assert source.shape==(1672,941,3)
 for name,w,h,frames,cols,x,y in [
-    ("cape_quality.webp",402,491,24,4,510,684),
-    ("chest_quality.webp",255,369,16,4,351,612)]:
+    ("cape_quality.webp",402,491,24,4,510,684)]:
     img=np.asarray(Image.open(R/name))
     assert img.shape==(frames//cols*h,cols*w,3),(name,img.shape)
     a=np.stack([img[i//cols*h:(i//cols+1)*h,i%cols*w:(i%cols+1)*w] for i in range(frames)])
@@ -33,13 +32,19 @@ assert any("root.addView(gallery,new LinearLayout.LayoutParams(-1,dp(320)))" in 
    and not line.lstrip().startswith("//") for line in ui.splitlines())
 assert "\\n        root.addView(gallery" not in ui
 assert "FLORESTA VIVA" in ui and "DARK FANTASY" in ui
+# Respiração removida de toda a cadeia: não pode voltar por acidente.
+assert "breathAtlas" not in scene
+assert "chestBitmap" not in service
+assert "chest_quality" not in service
+assert "Capa ao vento" in (J/"SettingsActivity.java").read_text()
+assert not (R/"chest_quality.webp").exists()
 assert "drawPose(c,atlas,first,columns,fw,fh,x,y,1f)" in scene
 assert "drawPose(c,atlas,second,columns,fw,fh,x,y,weight)" in scene
 assert "boolean hitKnight=knightScene.onTouch" in service
 assert "hitKnight && now-touchDown>1250" in service
 assert "private final float[] rotationMatrix=new float[9]" in service
 assert "onVisibilityChanged(boolean v)" in service
-assert "versionCode 8" in (ROOT/"android/app/build.gradle").read_text()
+assert "versionCode 9" in (ROOT/"android/app/build.gradle").read_text()
 for p in ["AndroidManifest.xml","res/xml/wallpaper.xml","res/values/strings.xml"]:
     path=ROOT/"android/app/src/main"/p if p.startswith("res/") else ROOT/"android/app/src/main"/p
     ET.parse(path)

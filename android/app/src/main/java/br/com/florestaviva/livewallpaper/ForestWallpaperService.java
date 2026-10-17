@@ -58,7 +58,7 @@ public class ForestWallpaperService extends WallpaperService {
         private boolean hardwareCanvasFailed=false;
         private long lastErrorLog=0;
         private Bitmap bitmap;
-        private Bitmap knightBitmap, capeBitmap, chestBitmap;
+        private Bitmap knightBitmap, capeBitmap;
         private KnightScene knightScene;
         private boolean knightSelected=false;
         private long touchDown=0, lastTouchUp=0;
@@ -244,8 +244,7 @@ public class ForestWallpaperService extends WallpaperService {
             BitmapFactory.Options options=new BitmapFactory.Options();options.inScaled=false;
             knightBitmap=BitmapFactory.decodeResource(getResources(),R.drawable.cavaleiro,options);
             capeBitmap=BitmapFactory.decodeResource(getResources(),R.drawable.cape_quality,options);
-            chestBitmap=BitmapFactory.decodeResource(getResources(),R.drawable.chest_quality,options);
-            knightScene=new KnightScene(knightBitmap,capeBitmap,chestBitmap);
+            knightScene=new KnightScene(knightBitmap,capeBitmap);
             knightScene.load(prefs);
         }
         private void drawFrame(float dt){
@@ -501,7 +500,6 @@ public class ForestWallpaperService extends WallpaperService {
             if(bitmap!=null){bitmap.recycle();bitmap=null;}
             if(knightBitmap!=null){knightBitmap.recycle();knightBitmap=null;}
             if(capeBitmap!=null){capeBitmap.recycle();capeBitmap=null;}
-            if(chestBitmap!=null){chestBitmap.recycle();chestBitmap=null;}
             super.onDestroy();
         }
     }

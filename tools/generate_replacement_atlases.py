@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deterministic 24/16-frame opaque replacement atlas builder.
+"""Deterministic 24-frame cape replacement atlas builder.
 
 Inputs: approved, untouched knight art from drawable-nodpi/cavaleiro.webp.
 Motion is locally warped and smoothly decays to zero at the crop boundary.
@@ -66,16 +66,6 @@ def cape_move(x,y,t):
 def cape_light(x,y,t):
     return (0.085*np.sin(2*t+x/48-y/110)+.025*np.sin(3*t+x/29))*np.clip((y+10)/460,0,1)
 
-cy,cx=np.meshgrid(np.arange(369,dtype="float32"),np.arange(255,dtype="float32"),indexing="ij")
-ellipse=((cx-123)/107)**2+((cy-197)/158)**2
-chest_mask=np.clip((1.08-ellipse)/.34,0,1)**2
-
-def chest_move(x,y,t):
-    breath=np.sin(t)
-    return 4.2*breath*np.sin(np.clip(y/368,0,1)*np.pi), -7.5*breath*np.exp(-((y-174)/170)**2)
-
-def chest_light(x,y,t):
-    return .035*np.sin(t)*np.exp(-((y-170)/180)**2)
-
+# O peitoral permanece inteiramente estático na arte original.
+# Apenas a capa gera quadros de substituição.
 atlas("cape_quality.webp",cape_box,24,4,cape_mask,cape_move,cape_light)
-atlas("chest_quality.webp",(351,612,606,981),16,4,chest_mask,chest_move,chest_light)

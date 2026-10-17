@@ -25,7 +25,7 @@ public class SettingsActivity extends Activity {
         if(knight){
             option(column,p,"knight_sword","Espada amaldiçoada",true);
             option(column,p,"knight_eyes","Olhos interativos",true);
-            option(column,p,"knight_cape","Capa e respiração",true);
+            option(column,p,"knight_cape","Capa ao vento",true);
             option(column,p,"knight_candles","Velas e luz dinâmica",true);
             option(column,p,"knight_fog","Névoa rasteira",true);
             option(column,p,"knight_tilt","Profundidade ao inclinar",true);

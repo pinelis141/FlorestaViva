@@ -22,7 +22,7 @@ final class KnightScene {
     static final int W=941,H=1672;
     private static final int PARTICLES=76;
     private final Random random=new Random(21331);
-    private final Bitmap background,capeAtlas,breathAtlas;
+    private final Bitmap background,capeAtlas;
     private final Paint art=new Paint(Paint.ANTI_ALIAS_FLAG|Paint.FILTER_BITMAP_FLAG);
     private final Paint pen=new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint glow=new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -41,8 +41,8 @@ final class KnightScene {
     private int screenW=1,screenH=1;
     private long lastAwaken=0;
 
-    KnightScene(Bitmap base,Bitmap cape,Bitmap breath){
-        background=base; capeAtlas=cape; breathAtlas=breath;
+    KnightScene(Bitmap base,Bitmap cape){
+        background=base; capeAtlas=cape;
         glow.setShader(new RadialGradient(0,0,40,
                 new int[]{0xB3FF6456,0x55F51F23,0x00DB1414},
                 new float[]{0,.32f,1},Shader.TileMode.CLAMP));
@@ -107,7 +107,6 @@ final class KnightScene {
         if(movingCape){
             // Independent region-replacement atlases: animated pixels displace original
             // paint exactly once. Both assets fade to the untouched base at their edge.
-            drawAtlas(c,breathAtlas,351,612,255,369,4,16,2.85f,0f);
             drawAtlas(c,capeAtlas,510,684,402,491,4,24,3.15f,wind);
         }
         if(candles)drawCandles(c);
