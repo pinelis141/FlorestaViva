@@ -96,8 +96,8 @@ final class KnightScene {
         art.setAlpha(255);
         c.drawBitmap(background,0,0,art);
         if(movingCape){
-            drawAtlas(c,breathAtlas,377,687,198,251,4,16,2.85f,elapsed,0f);
-            drawAtlas(c,capeAtlas,542,696,338,464,6,24,1.75f,elapsed,wind);
+            drawAtlas(c,breathAtlas,377,687,198,251,4,16,2.85f,0f);
+            drawAtlas(c,capeAtlas,542,696,338,464,6,24,1.75f,wind);
         }
         if(candles)drawCandles(c);
         if(sword)drawSword(c);
