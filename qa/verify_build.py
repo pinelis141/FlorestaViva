@@ -28,10 +28,10 @@ for name,w,h,frames,cols,x,y in [
 ui=(J/"MainActivity.java").read_text()
 scene=(J/"KnightScene.java").read_text()
 service=(J/"ForestWallpaperService.java").read_text()
-assert any("root.addView(gallery,new LinearLayout.LayoutParams(-1,dp(320)))" in line
+assert any("root.addView(galleryScroll,new LinearLayout.LayoutParams(-1,dp(322)))" in line
    and not line.lstrip().startswith("//") for line in ui.splitlines())
 assert "\\n        root.addView(gallery" not in ui
-assert "FLORESTA VIVA" in ui and "DARK FANTASY" in ui
+assert "FLORESTA VIVA" in ui and "DARK FANTASY" in ui and "GALÁXIA" in ui
 # Respiração removida de toda a cadeia: não pode voltar por acidente.
 assert "breathAtlas" not in scene
 assert "chestBitmap" not in service
