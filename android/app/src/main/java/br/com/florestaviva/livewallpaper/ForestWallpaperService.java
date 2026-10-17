@@ -243,8 +243,8 @@ public class ForestWallpaperService extends WallpaperService {
             if(knightScene!=null)return;
             BitmapFactory.Options options=new BitmapFactory.Options();options.inScaled=false;
             knightBitmap=BitmapFactory.decodeResource(getResources(),R.drawable.cavaleiro,options);
-            capeBitmap=BitmapFactory.decodeResource(getResources(),R.drawable.cape_flow,options);
-            chestBitmap=BitmapFactory.decodeResource(getResources(),R.drawable.breath_flow,options);
+            capeBitmap=BitmapFactory.decodeResource(getResources(),R.drawable.cape_quality,options);
+            chestBitmap=BitmapFactory.decodeResource(getResources(),R.drawable.chest_quality,options);
             knightScene=new KnightScene(knightBitmap,capeBitmap,chestBitmap);
             knightScene.load(prefs);
         }
