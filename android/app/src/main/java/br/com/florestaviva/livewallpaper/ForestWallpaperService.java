@@ -52,6 +52,10 @@ public class ForestWallpaperService extends WallpaperService {
         private final SensorManager sensorManager;
         private final Sensor sensor;
         private Bitmap bitmap;
+        private Bitmap knightBitmap, capeBitmap, chestBitmap;
+        private KnightScene knightScene;
+        private boolean knightSelected=false;
+        private long touchDown=0, lastTouchUp=0;
         private float artLeft, artTop, artScale=1f;
         private final Rect waterSrc = new Rect();
         private final RectF waterDst = new RectF();
@@ -128,6 +132,8 @@ public class ForestWallpaperService extends WallpaperService {
         private float between(float a,float b){return a+random.nextFloat()*(b-a);}
         private float clamp(float v,float a,float b){return Math.max(a,Math.min(b,v));}
         private void reloadPrefs(){
+            knightSelected="knight".equals(prefs.getString("scene","forest"));
+            if(knightSelected){ensureKnightScene();knightScene.load(prefs);}
             fire=prefs.getBoolean("fire",true);
             fog=prefs.getBoolean("fog",true);
             foliage=prefs.getBoolean("leaves",true);
@@ -157,6 +163,19 @@ public class ForestWallpaperService extends WallpaperService {
         }
         @Override public void onTouchEvent(MotionEvent ev){
             int action=ev.getActionMasked();
+            if(knightSelected){
+                ensureKnightScene();
+                if(action==MotionEvent.ACTION_DOWN){touchDown=SystemClock.uptimeMillis();}
+                else if(action==MotionEvent.ACTION_UP){
+                    long now=SystemClock.uptimeMillis();
+                    float px=clamp(ev.getX()/width,0,1),py=clamp(ev.getY()/height,0,1);
+                    boolean doubleTap=now-lastTouchUp<400;
+                    knightScene.onTouch(px,py,doubleTap);
+                    if(now-touchDown>1700)knightScene.tryAwaken();
+                    lastTouchUp=now;
+                }
+                return;
+            }
             if(action==MotionEvent.ACTION_DOWN || action==MotionEvent.ACTION_MOVE){
                 // Launchers may reserve some gestures for their own UI.
                 if(action==MotionEvent.ACTION_DOWN || random.nextFloat()<.18f){
@@ -184,7 +203,7 @@ public class ForestWallpaperService extends WallpaperService {
             }
         }
         private void startSensor(){
-            if(tiltEnabled && !sensorRegistered && sensorManager!=null && sensor!=null) {
+            if((knightSelected?prefs.getBoolean("knight_tilt",true):tiltEnabled) && !sensorRegistered && sensorManager!=null && sensor!=null) {
                 sensorRegistered=sensorManager.registerListener(this,sensor,SensorManager.SENSOR_DELAY_UI);
             }
         }
@@ -198,6 +217,15 @@ public class ForestWallpaperService extends WallpaperService {
         }
         @Override public void onAccuracyChanged(Sensor s,int accuracy){}
 
+        private void ensureKnightScene(){
+            if(knightScene!=null)return;
+            BitmapFactory.Options options=new BitmapFactory.Options();options.inScaled=false;
+            knightBitmap=BitmapFactory.decodeResource(getResources(),R.drawable.cavaleiro,options);
+            capeBitmap=BitmapFactory.decodeResource(getResources(),R.drawable.capa,options);
+            chestBitmap=BitmapFactory.decodeResource(getResources(),R.drawable.peitoral,options);
+            knightScene=new KnightScene(knightBitmap,capeBitmap,chestBitmap);
+            knightScene.load(prefs);
+        }
         private void drawFrame(float dt){
             time+=dt;
             tiltX+=(targetX-tiltX)*.06f;
@@ -210,6 +238,11 @@ public class ForestWallpaperService extends WallpaperService {
                 final int w=canvas.getWidth(),h=canvas.getHeight();
                 if(w<=0||h<=0)return;
                 canvas.drawColor(Color.rgb(3,16,22));
+                if(knightSelected){
+                    ensureKnightScene();
+                    knightScene.draw(canvas,w,h,dt,tiltX,tiltY);
+                    return;
+                }
                 drawArt(canvas,w,h);
                 drawLighting(canvas,w,h);
                 if(fog)drawFog(canvas,w,h);
@@ -428,6 +461,9 @@ public class ForestWallpaperService extends WallpaperService {
             handler.removeCallbacks(drawRunnable);
             stopSensor();prefs.unregisterOnSharedPreferenceChangeListener(this);
             if(bitmap!=null){bitmap.recycle();bitmap=null;}
+            if(knightBitmap!=null){knightBitmap.recycle();knightBitmap=null;}
+            if(capeBitmap!=null){capeBitmap.recycle();capeBitmap=null;}
+            if(chestBitmap!=null){chestBitmap.recycle();chestBitmap=null;}
             super.onDestroy();
         }
     }
