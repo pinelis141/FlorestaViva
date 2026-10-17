@@ -6,6 +6,7 @@ on:
     paths:
       - '*.zip'
       - 'android/**'
+      - '.github/workflows/android.yml'
 permissions:
   contents: read
 jobs:
@@ -37,12 +38,13 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v3
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.10.2'
       - name: Instalar Android SDK 35
-        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+        run: |
+          echo "y" | sdkmanager --licenses >/dev/null || true
+          sdkmanager --install 'platforms;android-35' 'build-tools;35.0.0'
       - name: Compilar APK
         run: cd android && gradle --no-daemon assembleDebug
       - name: Publicar APK para download
